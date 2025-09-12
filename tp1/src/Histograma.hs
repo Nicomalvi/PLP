@@ -62,28 +62,31 @@ data Histograma = Histograma Float Float [Int]
 vacio :: Int -> (Float, Float) -> Histograma
 vacio n (l, u) = Histograma l ((u-l)/(fromIntegral n)) (replicate (n+2) 0)
 
-
 -- | Agrega un valor al histograma.
 
 -- COMENTARIO
 -- Hay que deducir a cual intervalo pertenece x, buscar la posicion de ese intervalo en la 
 -- lista y sumarle 1 a ese elemento.
 
--- Idea general (medio raro)
--- Creo una lista con iterate de todos los intervalos, ya que conozco i, t y el tamaño de cs
--- Luego, para agregar x, x ira en el intervalo donde sea mayor o igual al primer elemento y menor estricto al siguiente
+-- EJEMPLO
+-- agregar (Histograma 0 3 [0,1,2,0,4]) 7.23141328587157 ---> (Histograma 0 3 [0,1,2,1,4])
 
--- Por ejemplo, si tengo 7 intervalos, el primero es 3.0 y el tamaño de cada uno es 2.0, puedo crear esta lista:
--- [3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0]
--- y si me piden agregar el 9.23, ya se en cual intervalo entra (el numero 3 si empezamos en 0)
+-- Como lo haria a ojo? me armo una lista de intervalos [a,b) y me voy fijando si x>=a && x < b
+-- en este ejemplo tendriamos [-inf ; 0) [0 ; 3) [3 ; 6) [6 ; 9) [9 ; +inf)
+-- Noto que 7... es mayor o igual a 6, menor estricto a 9 --> entra en el indice 3
+-- hago cs[3] = cs[3]+1 (entra 1 elemento más, cs solo toma cantidades)
 
--- Para detectar ese indice hago un foldl, empiezo en 0 y voy aumentando el acumulador de 1 en 1 (mientras subo de indice)
--- si estoy en el intervalo correcto O SI me pasé, no sumo mas (quiero que el acumulador se quede quieto y me diga cual indice es)
--- si me falta para llegar al intervalo correcto, sigo aumentando de a 1
+-- Recuerdo que ActualizarElem toma un índice (aca seria 3), una función (siempre +1) y una lista (siempre cs)
+-- La parte difícil es sacar el índice
 
--- Luego a ese indice le sumo 1, hay que recordar que el primer elemento de mis casilleros es el fuera de rango
+-- Iterate toma una función, un x y devuelve una lista infinita de esta forma
+-- [x, f(x), f(item anterior), f(item anterior)...]
+-- Ejemplo iterate (+1) 0 = [0, 1, 2, 3, 4...]
+-- En nuestro caso, iterate +t i = [i, i+t, i+2t, i+3t...] (queda muy parecido a lo que dice el enunciado de Histograma)
+-- si cortamos la generacion infinita hasta length cs-2 podemos recrear la lista de intervalos de la siguiente manera
+-- [-inf] ++ (take (length cs) (iterate +t i)) ++ [+inf]
 
--- Si no entienden la notacion de funcion lambda adentro del foldl o algo... hora de las guias...
+-- Acá tendríamos una lista de mínimos de intervalos, falta iterar y descubrir donde entra x
 agregar :: Float -> Histograma -> Histograma
 agregar x (Histograma i t cs) = (Histograma i t (actualizarElem ((fromIntegral indiceCambiar)+1) (+1) cs))
                               where

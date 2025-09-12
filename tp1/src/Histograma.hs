@@ -87,18 +87,38 @@ vacio n (l, u) = Histograma l ((u-l)/(fromIntegral n)) (replicate (n+2) 0)
 -- [-inf] ++ (take (length cs) (iterate +t i)) ++ [+inf]
 
 -- Acá tendríamos una lista de mínimos de intervalos, falta iterar y descubrir donde entra x
+
+-- Para iterar usamos foldl ya que empieza de la izquierda, podemos comenzar con acumulador en 0
 agregar :: Float -> Histograma -> Histograma
-agregar x (Histograma i t cs) = (Histograma i t (actualizarElem ((fromIntegral indiceCambiar)+1) (+1) cs))
+agregar x (Histograma i t cs) = (Histograma i t (actualizarElem(indice (+1) cs)))
+                              where
+                                indice = 
+                                  encontrarIndice
+                                    [infinitoNegativo] ++ (take ((length cs)-2) (iterate +t i)) ++ [infinitoPositivo]
+                                    x
+                                    t
+                                
+encontrarIndice :: [Float] -> Float -> Float -> Int
+encontrarIndice [] y t = 0
+encontrarIndice (x:xs) y t = if y>=x+t then (encontrarIndice xs y t) + 1 else 0
+--[-inf ; 0) [0 ; 3) [3 ; 6) [6 ; 9) [9 ; +inf)
+
+agregar2 :: Float -> Histograma -> Histograma
+agregar2 x (Histograma i t cs) = (Histograma i t (actualizarElem ((fromIntegral indiceCambiar)+1) (+1) cs))
                               where
                                 indiceCambiar = 
                                   foldl 
-                                    (\ac actual -> if (x>=actual && x<actual+t) || x<actual then ac+0 else ac+1) -- funcion foldl
-                                    0  -- acumulador comienza en 0
-                                    (take (length cs) (iterate (+t) i)) -- lista que uso
+                                    (\ac actual -> if (x >= actual + t) then ac + 1 else ac + 0) 
+                                    0
+                                    [infinitoNegativo] ++ (take ((length cs)-2) (iterate +t i)) ++ [infinitoPositivo]
 
 -- | Arma un histograma a partir de una lista de números reales con la cantidad de casilleros y rango indicados.
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
-histograma n r xs = error "COMPLETAR EJERCICIO 5"
+histograma n (a, b) xs = 
+                        foldl
+                          (\hist actual -> agregar actual hist)
+                          vacio n (a, b)
+                          xs
 
 -- | Un `Casillero` representa un casillero del histograma con sus límites, cantidad y porcentaje.
 -- Invariante: Sea @Casillero m1 m2 c p@ entonces @m1 < m2@, @c >= 0@, @0 <= p <= 100@
@@ -123,4 +143,11 @@ casPorcentaje (Casillero _ _ _ p) = p
 
 -- | Dado un histograma, devuelve la lista de casilleros con sus límites, cantidad y porcentaje.
 casilleros :: Histograma -> [Casillero]
-casilleros _ = error "COMPLETAR EJERCICIO 6"
+casilleros (Histograma i t cs) = 
+                                zipWith4 cantidades minimos maximos porcentajes crearCasillero
+                                  where
+                                    cantidades = cs
+                                    minimos = [infinitoNegativo] ++ (take ((length cs)- 1) (iterate (+t) i))
+                                    maximos = (take ((length cs)- 1) (iterate (+t) i)) ++ [infinitoPositivo]
+                                    porcentajes = map (\x -> x/(sum cs)) cs
+                                    crearCasillero = (\cantidad minimo maximo porcentaje -> Casillero minimo maximo cantidad porcentaje)

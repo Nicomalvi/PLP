@@ -1,3 +1,4 @@
+module Histograma
 -- | Un `Histograma` es una estructura de datos que permite contar cuántos valores hay en cada rango.
 -- @vacio n (a, b)@ devuelve un histograma vacío con n+2 casilleros:
 --
@@ -8,8 +9,7 @@
 -- * @[b - tamIntervalo, b)@
 -- * @[b, +inf)@
 --
--- `vacio`, `agregar` e `histograma` se usan para construir un histograma.
-module Histograma
+-- `vacio`, `agregar` e `histograma` se usan para construir un histograma
   ( Histograma, -- No se exportan los constructores
     vacio,
     agregar,
@@ -22,7 +22,7 @@ module Histograma
     casilleros,
   )
 where
-
+import Data.List (zipWith4)
 import Util
 
 data Histograma = Histograma Float Float [Int]
@@ -90,11 +90,11 @@ vacio n (l, u) = Histograma l ((u-l)/(fromIntegral n)) (replicate (n+2) 0)
 
 -- Para iterar usamos foldl ya que empieza de la izquierda, podemos comenzar con acumulador en 0
 agregar :: Float -> Histograma -> Histograma
-agregar x (Histograma i t cs) = (Histograma i t (actualizarElem(indice (+1) cs)))
+agregar x (Histograma i t cs) = (Histograma i t (actualizarElem indice (+1) cs))
                               where
                                 indice = 
                                   encontrarIndice
-                                    [infinitoNegativo] ++ (take ((length cs)-2) (iterate +t i)) ++ [infinitoPositivo]
+                                    ([infinitoNegativo] ++ (take ((length cs)-2) (iterate (+t) i)) ++ [infinitoPositivo])
                                     x
                                     t
                                 
@@ -110,14 +110,14 @@ agregar2 x (Histograma i t cs) = (Histograma i t (actualizarElem ((fromIntegral 
                                   foldl 
                                     (\ac actual -> if (x >= actual + t) then ac + 1 else ac + 0) 
                                     0
-                                    [infinitoNegativo] ++ (take ((length cs)-2) (iterate +t i)) ++ [infinitoPositivo]
+                                    ([infinitoNegativo] ++ (take ((length cs)-2) (iterate (+t) i)) ++ [infinitoPositivo])
 
 -- | Arma un histograma a partir de una lista de números reales con la cantidad de casilleros y rango indicados.
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
 histograma n (a, b) xs = 
                         foldl
                           (\hist actual -> agregar actual hist)
-                          vacio n (a, b)
+                          (vacio n (a, b))
                           xs
 
 -- | Un `Casillero` representa un casillero del histograma con sus límites, cantidad y porcentaje.
@@ -144,10 +144,10 @@ casPorcentaje (Casillero _ _ _ p) = p
 -- | Dado un histograma, devuelve la lista de casilleros con sus límites, cantidad y porcentaje.
 casilleros :: Histograma -> [Casillero]
 casilleros (Histograma i t cs) = 
-                                zipWith4 cantidades minimos maximos porcentajes crearCasillero
+                                zipWith4 crearCasillero cantidades minimos maximos porcentajes
                                   where
-                                    cantidades = cs
-                                    minimos = [infinitoNegativo] ++ (take ((length cs)- 1) (iterate (+t) i))
-                                    maximos = (take ((length cs)- 1) (iterate (+t) i)) ++ [infinitoPositivo]
-                                    porcentajes = map (\x -> x/(sum cs)) cs
+                                    cantidades     = cs
+                                    minimos        = ([infinitoNegativo] ++ (take ((length cs)- 1) (iterate (+t) i)))
+                                    maximos        = ((take ((length cs)- 1) (iterate (+t) i)) ++ [infinitoPositivo])
+                                    porcentajes    = (map (\x -> (fromIntegral x)/(fromIntegral (sum cs))) cs)
                                     crearCasillero = (\cantidad minimo maximo porcentaje -> Casillero minimo maximo cantidad porcentaje)
